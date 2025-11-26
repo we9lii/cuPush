@@ -87,7 +87,45 @@ app.post('/api/login', asyncHandler(async (req, res) => {
 // --- Root Page ---
 app.get('/', (req, res) => {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.status(200).send(`<!doctype html><html lang="ar"><head><meta charset="utf-8"><title>Runing By Faisal</title><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#0f172a;color:#fff"><div style="text-align:center"><div style="font-size:24px;font-weight:700;margin-bottom:8px">API Runing ..</div><div style="opacity:.8">dev by : Faisal</div></div></body></html>`);
+    res.status(200).send(`<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Running By Faisal</title>
+  <link rel="stylesheet" href="css/term.css">
+  <style>
+    body{margin:0;background:#0c1022;color:#02d1ff;font-family:system-ui,-apple-system,'Segoe UI',Roboto,Ubuntu,'Fira Sans',sans-serif}
+    .container.on{display:flex;align-items:center;justify-content:center;height:100vh}
+    .screen{max-width:720px;width:100%;padding:24px}
+    .title{letter-spacing:.12em;color:#0efb6e;margin:0 0 12px;font-size:14px}
+    .box--outer{border:1px solid #0efb6e;padding:10px}
+    .box{border:1px solid #02d1ff;padding:10px}
+    .box--inner{border:1px dashed #02d1ff;padding:14px}
+    .holder{font-size:18px}
+    b{color:#ffd166}
+  </style>
+</head>
+<body class="">
+  <div class="container on">
+    <div class="screen">
+      <h3 class="title">CONNECTION ESTABLISHED</h3>
+      <div class="box--outer">
+        <div class="box">
+          <div class="box--inner">
+            <div class="content">
+              <div class="holder">
+                <b>Welcome to Faisal world</b> — &nbsp;&nbsp;API Running
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`);
 });
 
 // --- Users Routes (Admin Only) ---
