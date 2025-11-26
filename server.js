@@ -23,13 +23,13 @@ app.post('/api/login', asyncHandler(async (req, res) => {
     const { username, password } = req.body;
 
     // 1. البحث عن المستخدم
-    const [users] = await db.query('SELECT * FROM users WHERE username = ?', [username]);
+    const result = await db.query('SELECT * FROM users WHERE username = $1', [username]);
 
-    if (users.length === 0) {
+    if (result.rows.length === 0) {
         return res.status(401).json({ message: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
     }
 
-    const user = users[0];
+    const user = result.rows[0];
 
     // 2. التحقق من كلمة المرور
     // ملاحظة: في بداية المشروع قد تكون كلمات المرور غير مشفرة، لذا ندعم الحالتين
@@ -48,32 +48,32 @@ app.post('/api/login', asyncHandler(async (req, res) => {
 
 // --- Users Routes (Admin Only) ---
 app.get('/api/users', asyncHandler(async (req, res) => {
-    const [rows] = await db.query('SELECT id, username, full_name as name, role FROM users');
-    res.json(rows);
+    const result = await db.query('SELECT id, username, full_name as name, role FROM users');
+    res.json(result.rows);
 }));
 
 app.post('/api/users', asyncHandler(async (req, res) => {
     const { username, password, name, role } = req.body;
 
     // التحقق من التكرار
-    const [existing] = await db.query('SELECT id FROM users WHERE username = ?', [username]);
-    if (existing.length > 0) {
+    const existingResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (existingResult.rows.length > 0) {
         return res.status(400).json({ message: 'اسم المستخدم موجود مسبقاً' });
     }
 
     // تشفير كلمة المرور
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const [result] = await db.query(
-        'INSERT INTO users (username, password_hash, full_name, role) VALUES (?, ?, ?, ?)',
+    const result = await db.query(
+        'INSERT INTO users (username, password_hash, full_name, role) VALUES ($1, $2, $3, $4) RETURNING id',
         [username, hashedPassword, name, role]
     );
 
-    res.json({ id: result.insertId, username, name, role });
+    res.json({ id: result.rows[0].id, username, name, role });
 }));
 
 app.delete('/api/users/:id', asyncHandler(async (req, res) => {
-    await db.query('DELETE FROM users WHERE id = ?', [req.params.id]);
+    await db.query('DELETE FROM users WHERE id = $1', [req.params.id]);
     res.json({ message: 'User deleted' });
 }));
 
@@ -88,10 +88,10 @@ app.get('/api/clients', asyncHandler(async (req, res) => {
         LEFT JOIN users u ON c.employee_id = u.id
         ORDER BY c.updated_at DESC
     `;
-    const [rows] = await db.query(query);
+    const result = await db.query(query);
 
     // تنسيق البيانات لتطابق الواجهة الأمامية (camelCase)
-    const formatted = rows.map(row => ({
+    const formatted = result.rows.map(row => ({
         id: row.id,
         clientName: row.client_name,
         mobileNumber: row.mobile_number,
@@ -100,7 +100,7 @@ app.get('/api/clients', asyncHandler(async (req, res) => {
         pricePerKw: row.price_per_kw,
         lastUpdateNote: row.last_update_note,
         employeeId: row.employee_id,
-        employeeName: row.employeeName || 'غير معروف',
+        employeeName: row.employeename || 'غير معروف',
         adminSeen: Boolean(row.admin_seen),
         createdAt: row.created_at,
         updatedAt: row.updated_at
@@ -114,19 +114,19 @@ app.post('/api/clients', asyncHandler(async (req, res) => {
     const { clientName, mobileNumber, region, systemSizeKw, pricePerKw, lastUpdateNote, employeeId } = req.body;
 
     // التحقق من تكرار الجوال
-    const [existing] = await db.query('SELECT id FROM clients WHERE mobile_number = ?', [mobileNumber]);
-    if (existing.length > 0) {
+    const existingResult = await db.query('SELECT id FROM clients WHERE mobile_number = $1', [mobileNumber]);
+    if (existingResult.rows.length > 0) {
         return res.status(400).json({ message: 'رقم الجوال مسجل مسبقاً' });
     }
 
-    const [result] = await db.query(
+    const result = await db.query(
         `INSERT INTO clients 
         (client_name, mobile_number, region, system_size_kw, price_per_kw, last_update_note, employee_id, admin_seen) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
         [clientName, mobileNumber, region, systemSizeKw, pricePerKw, lastUpdateNote, employeeId, false]
     );
 
-    res.json({ id: result.insertId, message: 'تمت الإضافة بنجاح' });
+    res.json({ id: result.rows[0].id, message: 'تمت الإضافة بنجاح' });
 }));
 
 // تحديث عميل
@@ -137,7 +137,7 @@ app.put('/api/clients/:id', asyncHandler(async (req, res) => {
 
     // إذا كان التحديث لمجرد "adminSeen"
     if (req.body.adminSeen !== undefined && Object.keys(req.body).length === 1) {
-        await db.query('UPDATE clients SET admin_seen = ? WHERE id = ?', [req.body.adminSeen, id]);
+        await db.query('UPDATE clients SET admin_seen = $1 WHERE id = $2', [req.body.adminSeen, id]);
         return res.json({ message: 'Updated seen status' });
     }
 
@@ -145,17 +145,17 @@ app.put('/api/clients/:id', asyncHandler(async (req, res) => {
 
     // التحقق من تكرار الجوال لغير هذا العميل
     if (mobileNumber) {
-        const [existing] = await db.query('SELECT id FROM clients WHERE mobile_number = ? AND id != ?', [mobileNumber, id]);
-        if (existing.length > 0) {
+        const existingResult = await db.query('SELECT id FROM clients WHERE mobile_number = $1 AND id != $2', [mobileNumber, id]);
+        if (existingResult.rows.length > 0) {
             return res.status(400).json({ message: 'رقم الجوال مسجل لعميل آخر' });
         }
     }
 
     await db.query(
         `UPDATE clients SET 
-        client_name = ?, mobile_number = ?, region = ?, system_size_kw = ?, price_per_kw = ?, last_update_note = ?, admin_seen = ?
-        WHERE id = ?`,
-        [clientName, mobileNumber, region, systemSizeKw, pricePerKw, lastUpdateNote, false, id] // نعيد admin_seen لـ false عند التحديث
+        client_name = $1, mobile_number = $2, region = $3, system_size_kw = $4, price_per_kw = $5, last_update_note = $6, admin_seen = $7
+        WHERE id = $8`,
+        [clientName, mobileNumber, region, systemSizeKw, pricePerKw, lastUpdateNote, false, id]
     );
 
     res.json({ message: 'Updated successfully' });
@@ -163,13 +163,14 @@ app.put('/api/clients/:id', asyncHandler(async (req, res) => {
 
 // حذف عميل
 app.delete('/api/clients/:id', asyncHandler(async (req, res) => {
-    await db.query('DELETE FROM clients WHERE id = ?', [req.params.id]);
+    await db.query('DELETE FROM clients WHERE id = $1', [req.params.id]);
     res.json({ message: 'Deleted successfully' });
 }));
 
 // --- Stats Route ---
 app.get('/api/stats', asyncHandler(async (req, res) => {
-    const [clients] = await db.query('SELECT system_size_kw, price_per_kw FROM clients');
+    const result = await db.query('SELECT system_size_kw, price_per_kw FROM clients');
+    const clients = result.rows;
 
     const totalClients = clients.length;
     const totalSystemSize = clients.reduce((acc, c) => acc + Number(c.system_size_kw), 0);
