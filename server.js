@@ -5,10 +5,7 @@ const bcrypt = require('bcryptjs');
 require('dotenv').config();
 
 const app = express();
-app.use(cors({
-    origin: 'https://qcheck.qssun.solar',
-    credentials: true
-}));
+app.use(cors());
 app.use(express.json());
 
 // --- Middleware للتحقق من الأخطاء ---
@@ -71,11 +68,32 @@ app.post('/api/login', asyncHandler(async (req, res) => {
 
     // 2. التحقق من كلمة المرور
     const isMatch = await bcrypt.compare(password, user.password_hash);
-    const isPlainMatch = password === user.password_hash;
 
-    if (!isMatch && !isPlainMatch) {
-        res.json(result.rows);
+    if (!isMatch) {
+        return res.status(401).json({ message: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
+    }
+
+    // 3. تحضير البيانات للإرجاع - تحويل full_name إلى name
+    const { password_hash, full_name, created_at, ...userData } = user;
+
+    res.json({
+        ...userData,
+        name: full_name,
+        role: user.role.toUpperCase()
+    });
+}));
+
+// --- Users Routes (Admin Only) ---
+app.get('/api/users', asyncHandler(async (req, res) => {
+    const result = await db.query('SELECT id, username, full_name as name, role FROM users');
+    const users = result.rows.map(u => ({
+        id: u.id,
+        username: u.username,
+        name: u.name,
+        role: String(u.role).toUpperCase()
     }));
+    res.json(users);
+}));
 
 app.post('/api/users', asyncHandler(async (req, res) => {
     const { username, password, name, role } = req.body;
@@ -85,13 +103,18 @@ app.post('/api/users', asyncHandler(async (req, res) => {
         return res.status(400).json({ message: 'اسم المستخدم موجود مسبقاً' });
     }
 
+    const roleLower = String(role).toLowerCase();
+    if (!['admin', 'employee'].includes(roleLower)) {
+        return res.status(400).json({ message: 'دور غير صالح. استخدم admin أو employee' });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
     const result = await db.query(
-        'INSERT INTO users (username, password_hash, full_name, role) VALUES ($1, $2, $3, $4) RETURNING id',
-        [username, hashedPassword, name, role]
+        'INSERT INTO users (username, password_hash, full_name, role) VALUES ($1, $2, $3, $4) RETURNING id, role',
+        [username, hashedPassword, name, roleLower]
     );
 
-    res.json({ id: result.rows[0].id, username, name, role });
+    res.json({ id: result.rows[0].id, username, name, role: String(result.rows[0].role).toUpperCase() });
 }));
 
 app.delete('/api/users/:id', asyncHandler(async (req, res) => {
@@ -115,8 +138,8 @@ app.get('/api/clients', asyncHandler(async (req, res) => {
         clientName: row.client_name,
         mobileNumber: row.mobile_number,
         region: row.region,
-        systemSizeKw: row.system_size_kw,
-        pricePerKw: row.price_per_kw,
+        systemSizeKw: Number(row.system_size_kw),
+        pricePerKw: Number(row.price_per_kw),
         lastUpdateNote: row.last_update_note,
         employeeId: row.employee_id,
         employeeName: row.employeename || 'غير معروف',
