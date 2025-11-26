@@ -70,18 +70,20 @@ app.post('/api/login', asyncHandler(async (req, res) => {
     const user = result.rows[0];
 
     // 2. التحقق من كلمة المرور
-    // ملاحظة: في بداية المشروع قد تكون كلمات المرور غير مشفرة، لذا ندعم الحالتين
     const isMatch = await bcrypt.compare(password, user.password_hash);
-    const isPlainMatch = password === user.password_hash; // للتوافق مع البيانات القديمة
+    const isPlainMatch = password === user.password_hash;
 
     if (!isMatch && !isPlainMatch) {
         return res.status(401).json({ message: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
     }
 
-    // إزالة كلمة المرور من الرد
-    delete user.password_hash;
+    // 3. تحضير البيانات للإرجاع - تحويل full_name إلى name
+    const { password_hash, full_name, created_at, ...userData } = user;
 
-    res.json(user);
+    res.json({
+        ...userData,
+        name: full_name
+    });
 }));
 
 // --- Users Routes (Admin Only) ---
@@ -93,15 +95,12 @@ app.get('/api/users', asyncHandler(async (req, res) => {
 app.post('/api/users', asyncHandler(async (req, res) => {
     const { username, password, name, role } = req.body;
 
-    // التحقق من التكرار
     const existingResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
     if (existingResult.rows.length > 0) {
         return res.status(400).json({ message: 'اسم المستخدم موجود مسبقاً' });
     }
 
-    // تشفير كلمة المرور
     const hashedPassword = await bcrypt.hash(password, 10);
-
     const result = await db.query(
         'INSERT INTO users (username, password_hash, full_name, role) VALUES ($1, $2, $3, $4) RETURNING id',
         [username, hashedPassword, name, role]
@@ -117,9 +116,7 @@ app.delete('/api/users/:id', asyncHandler(async (req, res) => {
 
 // --- Clients Routes ---
 
-// جلب كل العملاء
 app.get('/api/clients', asyncHandler(async (req, res) => {
-    // نجلب أيضاً اسم الموظف عبر الـ JOIN
     const query = `
         SELECT c.*, u.full_name as employeeName 
         FROM clients c 
@@ -128,7 +125,6 @@ app.get('/api/clients', asyncHandler(async (req, res) => {
     `;
     const result = await db.query(query);
 
-    // تنسيق البيانات لتطابق الواجهة الأمامية (camelCase)
     const formatted = result.rows.map(row => ({
         id: row.id,
         clientName: row.client_name,
@@ -147,11 +143,9 @@ app.get('/api/clients', asyncHandler(async (req, res) => {
     res.json(formatted);
 }));
 
-// إضافة عميل
 app.post('/api/clients', asyncHandler(async (req, res) => {
     const { clientName, mobileNumber, region, systemSizeKw, pricePerKw, lastUpdateNote, employeeId } = req.body;
 
-    // التحقق من تكرار الجوال
     const existingResult = await db.query('SELECT id FROM clients WHERE mobile_number = $1', [mobileNumber]);
     if (existingResult.rows.length > 0) {
         return res.status(400).json({ message: 'رقم الجوال مسجل مسبقاً' });
@@ -167,13 +161,9 @@ app.post('/api/clients', asyncHandler(async (req, res) => {
     res.json({ id: result.rows[0].id, message: 'تمت الإضافة بنجاح' });
 }));
 
-// تحديث عميل
 app.put('/api/clients/:id', asyncHandler(async (req, res) => {
     const { id } = req.params;
-    // نتجاهل الحقول التي لا نريد تحديثها، أو نستخدم dynamic query
-    // هنا سنحدث الحقول المرسلة فقط
 
-    // إذا كان التحديث لمجرد "adminSeen"
     if (req.body.adminSeen !== undefined && Object.keys(req.body).length === 1) {
         await db.query('UPDATE clients SET admin_seen = $1 WHERE id = $2', [req.body.adminSeen, id]);
         return res.json({ message: 'Updated seen status' });
@@ -181,7 +171,6 @@ app.put('/api/clients/:id', asyncHandler(async (req, res) => {
 
     const { clientName, mobileNumber, region, systemSizeKw, pricePerKw, lastUpdateNote } = req.body;
 
-    // التحقق من تكرار الجوال لغير هذا العميل
     if (mobileNumber) {
         const existingResult = await db.query('SELECT id FROM clients WHERE mobile_number = $1 AND id != $2', [mobileNumber, id]);
         if (existingResult.rows.length > 0) {
@@ -199,7 +188,6 @@ app.put('/api/clients/:id', asyncHandler(async (req, res) => {
     res.json({ message: 'Updated successfully' });
 }));
 
-// حذف عميل
 app.delete('/api/clients/:id', asyncHandler(async (req, res) => {
     await db.query('DELETE FROM clients WHERE id = $1', [req.params.id]);
     res.json({ message: 'Deleted successfully' });
