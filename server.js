@@ -87,7 +87,7 @@ app.post('/api/login', asyncHandler(async (req, res) => {
 app.get('/api/users', asyncHandler(async (req, res) => {
     const result = await db.query('SELECT id, username, full_name as name, role FROM users');
     const users = result.rows.map(u => ({
-        id: u.id,
+        id: String(u.id),
         username: u.username,
         name: u.name,
         role: String(u.role).toUpperCase()
@@ -114,7 +114,7 @@ app.post('/api/users', asyncHandler(async (req, res) => {
         [username, hashedPassword, name, roleLower]
     );
 
-    res.json({ id: result.rows[0].id, username, name, role: String(result.rows[0].role).toUpperCase() });
+    res.json({ id: String(result.rows[0].id), username, name, role: String(result.rows[0].role).toUpperCase() });
 }));
 
 app.delete('/api/users/:id', asyncHandler(async (req, res) => {
