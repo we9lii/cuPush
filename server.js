@@ -24,6 +24,7 @@ const asyncHandler = (fn) => (req, res, next) => {
             role VARCHAR(20) NOT NULL CHECK (role IN ('admin', 'employee')),
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`);
+        await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS mobile_number VARCHAR(15) UNIQUE`);
 
         await db.query(`CREATE TABLE IF NOT EXISTS clients (
             id SERIAL PRIMARY KEY,
@@ -83,24 +84,38 @@ app.post('/api/login', asyncHandler(async (req, res) => {
     });
 }));
 
+// --- Root Page ---
+app.get('/', (req, res) => {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.status(200).send(`<!doctype html><html lang="ar"><head><meta charset="utf-8"><title>Runing By Faisal</title><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#0f172a;color:#fff"><div style="text-align:center"><div style="font-size:24px;font-weight:700;margin-bottom:8px">API Runing ..</div><div style="opacity:.8">dev by : Faisal</div></div></body></html>`);
+});
+
 // --- Users Routes (Admin Only) ---
 app.get('/api/users', asyncHandler(async (req, res) => {
-    const result = await db.query('SELECT id, username, full_name as name, role FROM users');
+    const result = await db.query('SELECT id, username, full_name as name, role, mobile_number FROM users');
     const users = result.rows.map(u => ({
-        id: String(u.id),
+        id: u.id,
         username: u.username,
         name: u.name,
-        role: String(u.role).toUpperCase()
+        role: String(u.role).toUpperCase(),
+        mobileNumber: u.mobile_number || null
     }));
     res.json(users);
 }));
 
 app.post('/api/users', asyncHandler(async (req, res) => {
-    const { username, password, name, role } = req.body;
+    const { username, password, name, role, mobileNumber } = req.body;
 
     const existingResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
     if (existingResult.rows.length > 0) {
         return res.status(400).json({ message: 'اسم المستخدم موجود مسبقاً' });
+    }
+
+    if (mobileNumber) {
+        const existingMobile = await db.query('SELECT id FROM users WHERE mobile_number = $1', [mobileNumber]);
+        if (existingMobile.rows.length > 0) {
+            return res.status(400).json({ message: 'رقم الجوال موجود مسبقاً' });
+        }
     }
 
     const roleLower = String(role).toLowerCase();
@@ -110,11 +125,11 @@ app.post('/api/users', asyncHandler(async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const result = await db.query(
-        'INSERT INTO users (username, password_hash, full_name, role) VALUES ($1, $2, $3, $4) RETURNING id, role',
-        [username, hashedPassword, name, roleLower]
+        'INSERT INTO users (username, password_hash, full_name, role, mobile_number) VALUES ($1, $2, $3, $4, $5) RETURNING id, role, mobile_number',
+        [username, hashedPassword, name, roleLower, mobileNumber || null]
     );
 
-    res.json({ id: String(result.rows[0].id), username, name, role: String(result.rows[0].role).toUpperCase() });
+    res.json({ id: result.rows[0].id, username, name, role: String(result.rows[0].role).toUpperCase(), mobileNumber: result.rows[0].mobile_number });
 }));
 
 app.delete('/api/users/:id', asyncHandler(async (req, res) => {
