@@ -74,23 +74,8 @@ app.post('/api/login', asyncHandler(async (req, res) => {
     const isPlainMatch = password === user.password_hash;
 
     if (!isMatch && !isPlainMatch) {
-        return res.status(401).json({ message: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
-    }
-
-    // 3. تحضير البيانات للإرجاع - تحويل full_name إلى name
-    const { password_hash, full_name, created_at, ...userData } = user;
-
-    res.json({
-        ...userData,
-        name: full_name
-    });
-}));
-
-// --- Users Routes (Admin Only) ---
-app.get('/api/users', asyncHandler(async (req, res) => {
-    const result = await db.query('SELECT id, username, full_name as name, role FROM users');
-    res.json(result.rows);
-}));
+        res.json(result.rows);
+    }));
 
 app.post('/api/users', asyncHandler(async (req, res) => {
     const { username, password, name, role } = req.body;
