@@ -1,17 +1,32 @@
 services:
   - type: web
-    name: solar-crm-backend
+    name: crmsolar-backend
     env: node
     buildCommand: npm install
-    startCommand: npm start
+    startCommand: node server.js
     envVars:
       - key: DB_HOST
-        sync: false
-      - key: DB_NAME
-        sync: false
-      - key: DB_PASSWORD
-        sync: false
+        fromDatabase:
+          name: crmsolar-db
+          property: connectionString
       - key: DB_USER
-        sync: false
+        fromDatabase:
+          name: crmsolar-db
+          property: username
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: crmsolar-db
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: crmsolar-db
+          property: databaseName
       - key: PORT
         value: 10000
+      - key: NODE_ENV
+        value: production
+
+databases:
+  - name: crmsolar-db
+    engine: mysql
+    version: "8.0"
