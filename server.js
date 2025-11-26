@@ -141,7 +141,7 @@ app.get('/api/clients', asyncHandler(async (req, res) => {
         systemSizeKw: Number(row.system_size_kw),
         pricePerKw: Number(row.price_per_kw),
         lastUpdateNote: row.last_update_note,
-        employeeId: row.employee_id,
+        employeeId: row.employee_id !== null ? String(row.employee_id) : null,
         employeeName: row.employeename || 'غير معروف',
         adminSeen: Boolean(row.admin_seen),
         createdAt: row.created_at,
@@ -159,11 +159,12 @@ app.post('/api/clients', asyncHandler(async (req, res) => {
         return res.status(400).json({ message: 'رقم الجوال مسجل مسبقاً' });
     }
 
+    const employeeIdInt = employeeId !== undefined && employeeId !== null ? parseInt(employeeId, 10) : null;
     const result = await db.query(
         `INSERT INTO clients 
         (client_name, mobile_number, region, system_size_kw, price_per_kw, last_update_note, employee_id, admin_seen) 
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-        [clientName, mobileNumber, region, systemSizeKw, pricePerKw, lastUpdateNote, employeeId, false]
+        [clientName, mobileNumber, region, systemSizeKw, pricePerKw, lastUpdateNote, employeeIdInt, false]
     );
 
     res.json({ id: result.rows[0].id, message: 'تمت الإضافة بنجاح' });
