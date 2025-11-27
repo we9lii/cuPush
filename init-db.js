@@ -36,11 +36,15 @@ async function initializeDatabase() {
           price_per_kw DECIMAL(10, 2),
           last_update_note TEXT,
           employee_id INTEGER REFERENCES users(id),
+          wells_count INTEGER,
+          project_map_url TEXT,
           admin_seen BOOLEAN DEFAULT FALSE,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+        await pool.query(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS wells_count INTEGER`);
+        await pool.query(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS project_map_url TEXT`);
         console.log('✓ Clients table created');
 
         // Create default admin user

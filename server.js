@@ -35,10 +35,14 @@ const asyncHandler = (fn) => (req, res, next) => {
             price_per_kw DECIMAL(10, 2),
             last_update_note TEXT,
             employee_id INTEGER REFERENCES users(id),
+            wells_count INTEGER,
+            project_map_url TEXT,
             admin_seen BOOLEAN DEFAULT FALSE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`);
+        await db.query(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS wells_count INTEGER`);
+        await db.query(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS project_map_url TEXT`);
 
         const hashedPassword = await bcrypt.hash('123', 10);
         await db.query(
@@ -197,6 +201,8 @@ app.get('/api/clients', asyncHandler(async (req, res) => {
         employeeId: row.employee_id !== null ? String(row.employee_id) : null,
         employeeName: row.employeename || 'غير معروف',
         adminSeen: Boolean(row.admin_seen),
+        wellsCount: row.wells_count !== null && row.wells_count !== undefined ? Number(row.wells_count) : null,
+        projectMapUrl: row.project_map_url || null,
         createdAt: row.created_at,
         updatedAt: row.updated_at
     }));
@@ -205,7 +211,7 @@ app.get('/api/clients', asyncHandler(async (req, res) => {
 }));
 
 app.post('/api/clients', asyncHandler(async (req, res) => {
-    const { clientName, mobileNumber, region, systemSizeKw, pricePerKw, lastUpdateNote, employeeId } = req.body;
+    const { clientName, mobileNumber, region, systemSizeKw, pricePerKw, lastUpdateNote, employeeId, wellsCount, projectMapUrl } = req.body;
 
     const existingResult = await db.query('SELECT id FROM clients WHERE mobile_number = $1', [mobileNumber]);
     if (existingResult.rows.length > 0) {
@@ -213,11 +219,22 @@ app.post('/api/clients', asyncHandler(async (req, res) => {
     }
 
     const employeeIdInt = employeeId !== undefined && employeeId !== null ? parseInt(employeeId, 10) : null;
+    const wellsInt = wellsCount !== undefined && wellsCount !== null ? parseInt(wellsCount, 10) : null;
+    if (wellsInt !== null && (Number.isNaN(wellsInt) || wellsInt < 1 || wellsInt > 100)) {
+        return res.status(400).json({ message: 'عدد الآبار يجب أن يكون بين 1 و 100' });
+    }
+    const url = projectMapUrl || null;
+    if (url !== null) {
+        const isValidMap = /^https?:\/\/(www\.)?google\.(com|[a-z]{2})\/maps\//i.test(url) || /^https?:\/\/maps\.app\.goo\.gl\//i.test(url);
+        if (!isValidMap) {
+            return res.status(400).json({ message: 'رابط خرائط Google غير صالح' });
+        }
+    }
     const result = await db.query(
         `INSERT INTO clients 
-        (client_name, mobile_number, region, system_size_kw, price_per_kw, last_update_note, employee_id, admin_seen) 
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-        [clientName, mobileNumber, region, systemSizeKw, pricePerKw, lastUpdateNote, employeeIdInt, false]
+        (client_name, mobile_number, region, system_size_kw, price_per_kw, last_update_note, employee_id, wells_count, project_map_url, admin_seen) 
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+        [clientName, mobileNumber, region, systemSizeKw, pricePerKw, lastUpdateNote, employeeIdInt, wellsInt, url, false]
     );
 
     res.json({ id: result.rows[0].id, message: 'تمت الإضافة بنجاح' });
@@ -231,7 +248,7 @@ app.put('/api/clients/:id', asyncHandler(async (req, res) => {
         return res.json({ message: 'Updated seen status' });
     }
 
-    const { clientName, mobileNumber, region, systemSizeKw, pricePerKw, lastUpdateNote } = req.body;
+    const { clientName, mobileNumber, region, systemSizeKw, pricePerKw, lastUpdateNote, wellsCount, projectMapUrl } = req.body;
 
     if (mobileNumber) {
         const existingResult = await db.query('SELECT id FROM clients WHERE mobile_number = $1 AND id != $2', [mobileNumber, id]);
@@ -240,11 +257,22 @@ app.put('/api/clients/:id', asyncHandler(async (req, res) => {
         }
     }
 
+    const wellsInt = wellsCount !== undefined && wellsCount !== null ? parseInt(wellsCount, 10) : null;
+    if (wellsInt !== null && (Number.isNaN(wellsInt) || wellsInt < 1 || wellsInt > 100)) {
+        return res.status(400).json({ message: 'عدد الآبار يجب أن يكون بين 1 و 100' });
+    }
+    const url = projectMapUrl || null;
+    if (url !== null) {
+        const isValidMap = /^https?:\/\/(www\.)?google\.(com|[a-z]{2})\/maps\//i.test(url) || /^https?:\/\/maps\.app\.goo\.gl\//i.test(url);
+        if (!isValidMap) {
+            return res.status(400).json({ message: 'رابط خرائط Google غير صالح' });
+        }
+    }
     await db.query(
         `UPDATE clients SET 
-        client_name = $1, mobile_number = $2, region = $3, system_size_kw = $4, price_per_kw = $5, last_update_note = $6, admin_seen = $7
-        WHERE id = $8`,
-        [clientName, mobileNumber, region, systemSizeKw, pricePerKw, lastUpdateNote, false, id]
+        client_name = $1, mobile_number = $2, region = $3, system_size_kw = $4, price_per_kw = $5, last_update_note = $6, wells_count = $7, project_map_url = $8, admin_seen = $9
+        WHERE id = $10`,
+        [clientName, mobileNumber, region, systemSizeKw, pricePerKw, lastUpdateNote, wellsInt, url, false, id]
     );
 
     res.json({ message: 'Updated successfully' });
