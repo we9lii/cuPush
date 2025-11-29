@@ -31,8 +31,8 @@ const asyncHandler = (fn) => (req, res, next) => {
             client_name VARCHAR(100) NOT NULL,
             mobile_number VARCHAR(15) UNIQUE NOT NULL,
             region VARCHAR(100),
-            system_size_kw DECIMAL(10, 2),
-            price_per_kw DECIMAL(10, 2),
+            system_size_hp DECIMAL(10, 2),
+            price_per_hp DECIMAL(10, 2),
             last_update_note TEXT,
             employee_id INTEGER REFERENCES users(id),
             wells_count INTEGER,
@@ -41,8 +41,16 @@ const asyncHandler = (fn) => (req, res, next) => {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`);
+        try { await db.query(`ALTER TABLE clients RENAME COLUMN system_size_kw TO system_size_hp`); } catch (e) {}
+        try { await db.query(`ALTER TABLE clients RENAME COLUMN price_per_kw TO price_per_hp`); } catch (e) {}
         await db.query(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS wells_count INTEGER`);
         await db.query(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS project_map_url TEXT`);
+        await db.query(`CREATE TABLE IF NOT EXISTS client_logs (
+            id SERIAL PRIMARY KEY,
+            client_id INTEGER REFERENCES clients(id) ON DELETE CASCADE,
+            note TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`);
 
         const hashedPassword = await bcrypt.hash('123', 10);
         await db.query(
@@ -195,8 +203,8 @@ app.get('/api/clients', asyncHandler(async (req, res) => {
         clientName: row.client_name,
         mobileNumber: row.mobile_number,
         region: row.region,
-        systemSizeKw: Number(row.system_size_kw),
-        pricePerKw: Number(row.price_per_kw),
+        systemSizeHp: Number(row.system_size_hp),
+        pricePerHp: Number(row.price_per_hp),
         lastUpdateNote: row.last_update_note,
         employeeId: row.employee_id !== null ? String(row.employee_id) : null,
         employeeName: row.employeename || 'غير معروف',
@@ -211,7 +219,7 @@ app.get('/api/clients', asyncHandler(async (req, res) => {
 }));
 
 app.post('/api/clients', asyncHandler(async (req, res) => {
-    const { clientName, mobileNumber, region, systemSizeKw, pricePerKw, lastUpdateNote, employeeId, wellsCount, projectMapUrl } = req.body;
+    const { clientName, mobileNumber, region, systemSizeHp, pricePerHp, lastUpdateNote, employeeId, wellsCount, projectMapUrl } = req.body;
 
     const existingResult = await db.query('SELECT id FROM clients WHERE mobile_number = $1', [mobileNumber]);
     if (existingResult.rows.length > 0) {
@@ -232,9 +240,9 @@ app.post('/api/clients', asyncHandler(async (req, res) => {
     }
     const result = await db.query(
         `INSERT INTO clients 
-        (client_name, mobile_number, region, system_size_kw, price_per_kw, last_update_note, employee_id, wells_count, project_map_url, admin_seen) 
+        (client_name, mobile_number, region, system_size_hp, price_per_hp, last_update_note, employee_id, wells_count, project_map_url, admin_seen) 
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
-        [clientName, mobileNumber, region, systemSizeKw, pricePerKw, lastUpdateNote, employeeIdInt, wellsInt, url, false]
+        [clientName, mobileNumber, region, systemSizeHp, pricePerHp, lastUpdateNote, employeeIdInt, wellsInt, url, false]
     );
 
     res.json({ id: result.rows[0].id, message: 'تمت الإضافة بنجاح' });
@@ -248,7 +256,7 @@ app.put('/api/clients/:id', asyncHandler(async (req, res) => {
         return res.json({ message: 'Updated seen status' });
     }
 
-    const { clientName, mobileNumber, region, systemSizeKw, pricePerKw, lastUpdateNote, wellsCount, projectMapUrl } = req.body;
+    const { clientName, mobileNumber, region, systemSizeHp, pricePerHp, lastUpdateNote, wellsCount, projectMapUrl } = req.body;
 
     if (mobileNumber) {
         const existingResult = await db.query('SELECT id FROM clients WHERE mobile_number = $1 AND id != $2', [mobileNumber, id]);
@@ -269,10 +277,17 @@ app.put('/api/clients/:id', asyncHandler(async (req, res) => {
         }
     }
     await db.query(
+    if (lastUpdateNote) {
+        const currentClient = await db.query('SELECT last_update_note FROM clients WHERE id = $1', [id]);
+        if (currentClient.rows.length > 0 && currentClient.rows[0].last_update_note !== lastUpdateNote) {
+            await db.query('INSERT INTO client_logs (client_id, note) VALUES ($1, $2)', [id, lastUpdateNote]);
+        }
+    }
+    await db.query(
         `UPDATE clients SET 
-        client_name = $1, mobile_number = $2, region = $3, system_size_kw = $4, price_per_kw = $5, last_update_note = $6, wells_count = $7, project_map_url = $8, admin_seen = $9
+        client_name = $1, mobile_number = $2, region = $3, system_size_hp = $4, price_per_hp = $5, last_update_note = $6, wells_count = $7, project_map_url = $8, admin_seen = $9, updated_at = CURRENT_TIMESTAMP
         WHERE id = $10`,
-        [clientName, mobileNumber, region, systemSizeKw, pricePerKw, lastUpdateNote, wellsInt, url, false, id]
+        [clientName, mobileNumber, region, systemSizeHp, pricePerHp, lastUpdateNote, wellsInt, url, false, id]
     );
 
     res.json({ message: 'Updated successfully' });
@@ -285,12 +300,12 @@ app.delete('/api/clients/:id', asyncHandler(async (req, res) => {
 
 // --- Stats Route ---
 app.get('/api/stats', asyncHandler(async (req, res) => {
-    const result = await db.query('SELECT system_size_kw, price_per_kw FROM clients');
+    const result = await db.query('SELECT system_size_hp, price_per_hp FROM clients');
     const clients = result.rows;
 
     const totalClients = clients.length;
-    const totalSystemSize = clients.reduce((acc, c) => acc + Number(c.system_size_kw), 0);
-    const totalProjectValue = clients.reduce((acc, c) => acc + (Number(c.system_size_kw) * Number(c.price_per_kw)), 0);
+    const totalSystemSize = clients.reduce((acc, c) => acc + Number(c.system_size_hp || 0), 0);
+    const totalProjectValue = clients.reduce((acc, c) => acc + (Number(c.system_size_hp || 0) * Number(c.price_per_hp || 0)), 0);
 
     res.json({
         totalClients,
@@ -348,3 +363,9 @@ app.get('/', (req, res) => {
 </body>
 </html>`);
 });
+// Client Logs
+app.get('/api/clients/:id/logs', asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const result = await db.query('SELECT id, note, created_at FROM client_logs WHERE client_id = $1 ORDER BY created_at DESC', [id]);
+    res.json(result.rows);
+}));
