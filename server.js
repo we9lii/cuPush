@@ -276,7 +276,6 @@ app.put('/api/clients/:id', asyncHandler(async (req, res) => {
             return res.status(400).json({ message: 'رابط خرائط Google غير صالح' });
         }
     }
-    await db.query(
     if (lastUpdateNote) {
         const currentClient = await db.query('SELECT last_update_note FROM clients WHERE id = $1', [id]);
         if (currentClient.rows.length > 0 && currentClient.rows[0].last_update_note !== lastUpdateNote) {
