@@ -21,9 +21,11 @@ const asyncHandler = (fn) => (req, res, next) => {
             username VARCHAR(50) UNIQUE NOT NULL,
             password_hash VARCHAR(255) NOT NULL,
             full_name VARCHAR(100) NOT NULL,
-            role VARCHAR(20) NOT NULL CHECK (role IN ('admin', 'employee')),
+            role VARCHAR(20) NOT NULL CHECK (role IN ('admin', 'employee', 'editor')),
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`);
+        try { await db.query(`ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check`); } catch (e) {}
+        try { await db.query(`ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('admin','employee','editor'))`); } catch (e) {}
         await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS mobile_number VARCHAR(15) UNIQUE`);
 
         await db.query(`CREATE TABLE IF NOT EXISTS clients (
@@ -169,8 +171,8 @@ app.post('/api/users', asyncHandler(async (req, res) => {
     }
 
     const roleLower = String(role).toLowerCase();
-    if (!['admin', 'employee'].includes(roleLower)) {
-        return res.status(400).json({ message: 'دور غير صالح. استخدم admin أو employee' });
+    if (!['admin', 'employee', 'editor'].includes(roleLower)) {
+        return res.status(400).json({ message: 'دور غير صالح. استخدم admin أو employee أو editor' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -297,6 +299,16 @@ app.delete('/api/clients/:id', asyncHandler(async (req, res) => {
     res.json({ message: 'Deleted successfully' });
 }));
 
+// Health check
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'ok', uptime: process.uptime(), timestamp: new Date().toISOString() });
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Server listening on port ${PORT}`);
+});
+
 // --- Stats Route ---
 app.get('/api/stats', asyncHandler(async (req, res) => {
     const result = await db.query('SELECT system_size_hp, price_per_hp FROM clients');
@@ -319,49 +331,6 @@ app.use((err, req, res, next) => {
     res.status(500).json({ message: 'حدث خطأ في الخادم' });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
-app.get('/', (req, res) => {
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.status(200).send(`<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <title>Running By Faisal</title>
-  <style>
-    body { margin:0; background:#0f172a; color:#fff; font-family:system-ui,-apple-system,'Segoe UI',Roboto,Ubuntu; height:100vh; display:flex; align-items:center; justify-content:center }
-    .container { display:flex; align-items:center; justify-content:center }
-    .loader { position:relative; width:200px; height:200px; perspective:800px }
-    .crystal { position:absolute; top:50%; left:50%; width:60px; height:60px; opacity:0; transform-origin:bottom center; transform:translate(-50%,-50%) rotateX(45deg) rotateZ(0deg); animation: spin 4s linear infinite, emerge 2s ease-in-out infinite alternate, fadeIn .3s ease-out forwards; border-radius:10px; visibility:hidden }
-    @keyframes spin { from { transform:translate(-50%,-50%) rotateX(45deg) rotateZ(0deg) } to { transform:translate(-50%,-50%) rotateX(45deg) rotateZ(360deg) } }
-    @keyframes emerge { 0%,100% { transform:translate(-50%,-50%) scale(.5); opacity:0 } 50% { transform:translate(-50%,-50%) scale(1); opacity:1 } }
-    @keyframes fadeIn { to { visibility:visible; opacity:.8 } }
-    .crystal:nth-child(1) { background:linear-gradient(45deg,#003366,#336699); animation-delay:0s }
-    .crystal:nth-child(2) { background:linear-gradient(45deg,#003399,#3366cc); animation-delay:.3s }
-    .crystal:nth-child(3) { background:linear-gradient(45deg,#0066cc,#3399ff); animation-delay:.6s }
-    .crystal:nth-child(4) { background:linear-gradient(45deg,#0099ff,#66ccff); animation-delay:.9s }
-    .crystal:nth-child(5) { background:linear-gradient(45deg,#33ccff,#99ccff); animation-delay:1.2s }
-    .crystal:nth-child(6) { background:linear-gradient(45deg,#66ffff,#ccffff); animation-delay:1.5s }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="loader">
-      <div class="crystal"></div>
-      <div class="crystal"></div>
-      <div class="crystal"></div>
-      <div class="crystal"></div>
-      <div class="crystal"></div>
-      <div class="crystal"></div>
-    </div>
-  </div>
-</body>
-</html>`);
-});
 // Client Logs
 app.get('/api/clients/:id/logs', asyncHandler(async (req, res) => {
     const { id } = req.params;
