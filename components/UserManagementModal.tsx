@@ -142,6 +142,7 @@ export const UserManagementModal: React.FC<Props> = ({ isOpen, onClose }) => {
                     onChange={e => setNewUserRole(e.target.value as UserRole)}
                   >
                       <option value={UserRole.EMPLOYEE}>موظف</option>
+                      <option value={UserRole.EDITOR}>محرّر</option>
                       <option value={UserRole.ADMIN}>مشرف</option>
                   </select>
                 </div>
@@ -185,8 +186,15 @@ export const UserManagementModal: React.FC<Props> = ({ isOpen, onClose }) => {
                       </td>
                       <td className="p-3 text-gray-500 dark:text-gray-400 dir-ltr text-right font-mono text-xs">{user.username}</td>
                       <td className="p-3">
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${user.role === UserRole.ADMIN ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}>
-                          {user.role === UserRole.ADMIN ? 'مشرف' : 'موظف'}
+                        <span className={
+                          `text-xs px-2 py-0.5 rounded-full ` +
+                          (user.role === UserRole.ADMIN
+                            ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                            : user.role === UserRole.EDITOR
+                              ? 'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                              : 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400')
+                        }>
+                          {user.role === UserRole.ADMIN ? 'مشرف' : user.role === UserRole.EDITOR ? 'محرّر' : 'موظف'}
                         </span>
                       </td>
                       <td className="p-3 text-center">

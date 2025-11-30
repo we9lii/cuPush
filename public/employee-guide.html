@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>دليل الموظف — إدارة العملاء للمشاريع الزراعيه</title>
+  <link rel="icon" href="/assets/favicon-CK4-283o.ico" />
+  <style>
+    :root { --brand:#0ea5b7; --text:#1f2937; --muted:#6b7280; --bg:#ffffff; --border:#e5e7eb; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:'Cairo',system-ui,-apple-system,'Segoe UI',Roboto,Ubuntu; background:var(--bg); color:var(--text); }
+    .container { max-width:900px; margin:0 auto; padding:24px; }
+    .header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:24px; }
+    .brand { display:flex; align-items:center; gap:12px; }
+    .brand img { width:48px; height:48px; border-radius:12px; }
+    .brand h1 { margin:0; font-size:20px; color:#111827; }
+    .actions { display:flex; gap:8px; }
+    .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:10px 14px; border-radius:10px; border:1px solid var(--border); background:#f8fafc; color:#0f172a; text-decoration:none; font-size:14px; }
+    .btn.primary { background:linear-gradient(90deg,#0e7490,#0ea5b7); color:#fff; border:0; }
+    .card { border:1px solid var(--border); border-radius:16px; overflow:hidden; background:#fff; margin-bottom:16px; }
+    .card h2 { margin:0; font-size:16px; padding:14px 18px; background:#f1f5f9; color:#0f172a; }
+    .card .content { padding:16px 18px; }
+    .list { display:grid; gap:10px; }
+    .item { display:flex; align-items:flex-start; gap:10px; border:1px dashed var(--border); border-radius:12px; padding:12px; }
+    .dot { width:10px; height:10px; border-radius:50%; background:var(--brand); margin-top:5px; }
+    .title { font-weight:700; font-size:14px; margin-bottom:4px; }
+    .desc { font-size:13px; color:var(--muted); }
+    .footer { margin-top:24px; font-size:12px; color:var(--muted); display:flex; justify-content:space-between; align-items:center; }
+    .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    @media (max-width:760px) { .grid2 { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="brand">
+        <img src="/app-logo.png" alt="" />
+        <h1>دليل الموظف — إدارة العملاء للمشاريع الزراعيه</h1>
+      </div>
+      <div class="actions">
+        <a class="btn" href="/" title="العودة للصفحة الرئيسية">الصفحة الرئيسية</a>
+        <button class="btn primary" onclick="window.print()" title="طباعة أو حفظ كـ PDF">طباعة / PDF</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>ابدأ هنا — الوصول الرسمي</h2>
+      <div class="content list">
+        <div class="item"><span class="dot"></span><div><div class="title">استخدم الرابط الرسمي فقط</div><div class="desc">رابط النظام على الويب: <a href="http://qcheck.qssun.solar/" class="dir-ltr">http://qcheck.qssun.solar/</a>. يُنصح بالدخول من المتصفح وتسجيل الدخول بحسابك المخصص.</div></div></div>
+        <div class="item"><span class="dot"></span><div><div class="title">تطبيق الجوال</div><div class="desc">الإصدار الخاص بأجهزة الجوال قيد التطوير. استخدم الرابط الرسمي حالياً، وسيتم إشعاركم عند جاهزية النسخة المعتمدة على متجر Google Play.</div></div></div>
+        <div class="item"><span class="dot"></span><div><div class="title">مضيّعات الوقت</div><div class="desc">تجنّب استخدام روابط غير موثوقة أو نسخ قديمة؛ ذلك يسبب اختلافات في البيانات أو تعارضاً عند الحفظ.</div></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>هدف الصفحة</h2>
+      <div class="content">
+        <div class="list">
+          <div class="item"><span class="dot"></span><div><div class="title">تسجيل العملاء وإدارة عملائك فقط</div><div class="desc">إضافة، تعديل، حذف، وعرض تفاصيل العميل ضمن نطاق حسابك.</div></div></div>
+          <div class="item"><span class="dot"></span><div><div class="title">ترتيب ذكي</div><div class="desc">قائمة “عملائي” مرتبة تلقائياً من الأحدث تحديثاً للأقدم لسهولة المتابعة.</div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>تسجيل عميل جديد</h2>
+      <div class="content grid2">
+        <div>
+          <div class="title">الحقول المطلوبة</div>
+          <div class="desc">اسم العميل، رقم الجوال، المنطقة، الحجم (حصان)، عدد الآبار، السعر/حصان، آخر تحديث/ملاحظة، رابط خرائط Google (اختياري).</div>
+        </div>
+        <div>
+          <div class="title">قواعد الإدخال</div>
+          <div class="desc">رقم الجوال غير مكرر؛ رابط الخرائط يبدأ بـ <span class="dir-ltr">https://maps.app.goo.gl/</span> أو <span class="dir-ltr">https://www.google.com/maps/</span>؛ عدد الآبار بين 1 و100.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>خطوات العمل التفصيلية</h2>
+      <div class="content list">
+        <div class="item"><span class="dot"></span><div><div class="title">تسجيل الدخول</div><div class="desc">ادخل بيانات حسابك (اسم المستخدم/كلمة المرور). عند نسيان كلمة المرور، تواصل مع المشرف لإعادة التعيين.</div></div></div>
+        <div class="item"><span class="dot"></span><div><div class="title">فتح نموذج العميل</div><div class="desc">من بطاقة “تسجيل عميل جديد”، اضغط لفتح النموذج ثم أدخل البيانات الأساسية بدقة.</div></div></div>
+        <div class="item"><span class="dot"></span><div><div class="title">التحقق من الجوال</div><div class="desc">عند مغادرة حقل الجوال، يفحص النظام التكرار ويعرض تنبيهاً إن كان الرقم مُسجلاً مسبقاً.</div></div></div>
+        <div class="item"><span class="dot"></span><div><div class="title">ملاحظات وتحديثات</div><div class="desc">يُنصح بتوثيق آخر تحديث/ملاحظة لكل عميل؛ عند التعديل تُضاف الملاحظة لسجل التحديثات.</div></div></div>
+        <div class="item"><span class="dot"></span><div><div class="title">التعديل والحذف</div><div class="desc">استخدم “تعديل” لتحديث القيم ثم احفظ، و“حذف” لإزالة السجل عند الحاجة.</div></div></div>
+        <div class="item"><span class="dot"></span><div><div class="title">عرض التفاصيل</div><div class="desc">اضغط صفّ العميل لعرض نافذة التفاصيل (الحجم، السعر بالريال، الآبار، الموقع، الملاحظات، السجل).</div></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>تعديل وحذف وعرض التفاصيل</h2>
+      <div class="content list">
+        <div class="item"><span class="dot"></span><div><div class="title">تعديل</div><div class="desc">من جدول “عملائي”، اضغط “تعديل” لملء النموذج تلقائياً، حدّث القيم ثم احفظ.</div></div></div>
+        <div class="item"><span class="dot"></span><div><div class="title">حذف</div><div class="desc">اضغط زر الحذف بجانب السجل للتأكيد وإزالة العميل.</div></div></div>
+        <div class="item"><span class="dot"></span><div><div class="title">التفاصيل</div><div class="desc">اضغط صفّ العميل لعرض نافذة التفاصيل (الحجم حصان، السعر بالريال، الآبار، الموقع، الملاحظات، السجل).</div></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>أخطاء شائعة وحلول</h2>
+      <div class="content list">
+        <div class="item"><span class="dot"></span><div><div class="title">رقم الجوال مسجل مسبقاً</div><div class="desc">غيّر الرقم أو تأكد أن العميل غير مضاف سابقاً.</div></div></div>
+        <div class="item"><span class="dot"></span><div><div class="title">رابط الخرائط غير صالح</div><div class="desc">انسخ الرابط مباشرة من خرائط Google.</div></div></div>
+        <div class="item"><span class="dot"></span><div><div class="title">القيم لا تظهر في الجدول</div><div class="desc">تأكد من إدخال “الحجم (حصان)” و“السعر/حصان” في الحقول الصحيحة.</div></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>دعم فني</h2>
+      <div class="content">
+        <div class="desc">عند وجود مشاكل في الدخول أو التسجيل، أعِد تحميل الصفحة ثم جرّب مجدداً، أو تواصل مع المشرف لإعادة تعيين كلمة المرور.</div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div>الإصدار الأول • إدارة العملاء للمشاريع الزراعيه • استخدم الرابط الرسمي أعلاه</div>
+      <div>تطوير: فيصل النتيفي، مدائن المستقبل للطاقة (QSSUN)</div>
+    </div>
+  </div>
+  <script>
+    const ua = navigator.userAgent.toLowerCase();
+    if (ua.includes('android')) {
+      document.title = 'دليل الموظف — التطبيق';
+    }
+  </script>
+</body>
+</html>

@@ -4,7 +4,7 @@ import { StorageService } from './services/storageService';
 import { EmployeeEntry } from './components/EmployeeEntry';
 import { AdminDashboard } from './components/AdminDashboard';
 import { UserManagementModal } from './components/UserManagementModal';
-import { Sun, Moon, LogOut, Code, Shield, Bell, Settings, Clock, Activity, User as UserIcon, Lock, Server } from 'lucide-react';
+import { Sun, Moon, LogOut, Code, Shield, Bell, Settings, Clock, Activity, User as UserIcon, Lock, Server, Info } from 'lucide-react';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -270,7 +270,7 @@ export default function App() {
             )}
 
             {/* Theme Toggle */}
-             <button 
+            <button 
               onClick={toggleTheme}
               className={`p-2 rounded-lg text-gray-500 dark:text-yellow-400 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors`}
               title={isDarkMode ? "تفعيل الوضع النهاري" : "تفعيل الوضع الليلي"}
@@ -279,6 +279,16 @@ export default function App() {
             </button>
 
             <div className="h-6 w-px bg-gray-200 dark:bg-slate-600 hidden sm:block"></div>
+
+            <a
+              href="/employee-guide.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 rounded-lg text-gray-600 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+              title="دليل الموظف"
+            >
+              <Info className="w-5 h-5" />
+            </a>
 
             <div className="flex flex-col items-end">
               <span className={`text-sm font-bold text-gray-800 dark:text-gray-100`}>{user.name}</span>

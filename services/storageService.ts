@@ -29,8 +29,8 @@ const INITIAL_CLIENTS: ClientRecord[] = [
     clientName: 'عميل تجريبي ',
     mobileNumber: '0501234567',
     region: 'القصيم',
-    systemSizeKw: 100,
-    pricePerKw: 1100,
+    systemSizeHp: 100,
+    pricePerHp: 1100,
     lastUpdateNote: 'تم الاتفاق مبدئياً',
     employeeId: 'u2',
     employeeName: ' dev',
@@ -43,8 +43,8 @@ const INITIAL_CLIENTS: ClientRecord[] = [
     clientName: 'عميل تجريبي 2 ',
     mobileNumber: '0598765432',
     region: 'حائل',
-    systemSizeKw: 250,
-    pricePerKw: 1100,
+    systemSizeHp: 250,
+    pricePerHp: 1100,
     lastUpdateNote: 'بانتظار الموافقة المالية',
     employeeId: 'u3',
     employeeName: ' dev2',
@@ -173,6 +173,30 @@ export const StorageService = {
     }
   },
 
+  updateUserProfile: async (id: string, data: { email?: string, mobileNumber?: string, password?: string }) => {
+    if (IS_DEMO_MODE) {
+      const users = StorageService.getUsersSync();
+      const index = users.findIndex(u => u.id === id);
+      if (index !== -1) {
+        users[index] = { ...users[index], ...data };
+        localStorage.setItem(USERS_KEY, JSON.stringify(users));
+
+        // Update current user if it's the same person
+        const currentUser = StorageService.getCurrentUser();
+        if (currentUser && currentUser.id === id) {
+          const { password, ...userWithoutPassword } = users[index];
+          localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userWithoutPassword));
+        }
+      }
+    } else {
+      await fetch(`${API_BASE_URL}/users/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+    }
+  },
+
   // --- Clients ---
   // In API mode, these must be awaited. In Demo, they are sync.
   // We will make them all return Promises or handle internally.
@@ -191,8 +215,20 @@ export const StorageService = {
   // For now, if IS_DEMO is false, components using this will break unless updated.
   // WE WILL UPDATE COMPONENTS TO USE ASYNC/AWAIT PATTERN OR PROMISES
   getClientsSync: (): ClientRecord[] => {
-    if (IS_DEMO_MODE) return JSON.parse(localStorage.getItem(CLIENTS_KEY) || '[]');
-    return [];
+    const stored = localStorage.getItem(CLIENTS_KEY);
+    if (!stored) return INITIAL_CLIENTS;
+    try {
+      const clients = JSON.parse(stored);
+      // Migration for old data keys
+      return clients.map((c: any) => ({
+        ...c,
+        systemSizeHp: c.systemSizeHp ?? c.systemSizeKw,
+        pricePerHp: c.pricePerHp ?? c.pricePerKw
+      }));
+    } catch (e) {
+      console.error('Error parsing clients', e);
+      return INITIAL_CLIENTS;
+    }
   },
 
   addClient: async (data: any): Promise<ClientRecord> => {
@@ -299,13 +335,7 @@ export const StorageService = {
     if (IS_DEMO_MODE) {
       const clients = StorageService.getClientsSync();
       const totalClients = clients.length;
-      const totalSystemSize = clients.reduce((acc, c) => acc + (Number(c.systemSizeKw) || 0), 0);
-      const totalProjectValue = clients.reduce((acc, c) => {
-        const size = Number(c.systemSizeKw) || 0;
-        const price = Number(c.pricePerKw) || 0;
-        return acc + (size * price);
-      }, 0);
-      return { totalClients, totalSystemSize, totalProjectValue };
+      return { totalClients };
     } else {
       const res = await fetch(`${API_BASE_URL}/stats`);
       return res.json();
@@ -317,15 +347,9 @@ export const StorageService = {
     if (IS_DEMO_MODE) {
       const clients = StorageService.getClientsSync();
       const totalClients = clients.length;
-      const totalSystemSize = clients.reduce((acc, c) => acc + (Number(c.systemSizeKw) || 0), 0);
-      const totalProjectValue = clients.reduce((acc, c) => {
-        const size = Number(c.systemSizeKw) || 0;
-        const price = Number(c.pricePerKw) || 0;
-        return acc + (size * price);
-      }, 0);
-      return { totalClients, totalSystemSize, totalProjectValue };
+      return { totalClients };
     }
-    return { totalClients: 0, totalSystemSize: 0, totalProjectValue: 0 };
+    return { totalClients: 0 };
   },
 
   getRecentActivity: async (): Promise<ClientRecord[]> => {
@@ -352,5 +376,14 @@ export const StorageService = {
         .slice(0, 5);
     }
     return [];
+  },
+
+  getClientLogs: async (clientId: string): Promise<{ id: string, note: string, createdAt: string }[]> => {
+    if (IS_DEMO_MODE) {
+      return []; // Demo mode doesn't support logs yet
+    } else {
+      const res = await fetch(`${API_BASE_URL}/clients/${clientId}/logs`);
+      return res.json();
+    }
   }
 };

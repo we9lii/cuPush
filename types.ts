@@ -1,7 +1,8 @@
 
 export enum UserRole {
   ADMIN = 'ADMIN',
-  EMPLOYEE = 'EMPLOYEE'
+  EMPLOYEE = 'EMPLOYEE',
+  EDITOR = 'EDITOR'
 }
 
 export interface User {
@@ -10,6 +11,8 @@ export interface User {
   password?: string; // Added for authentication
   name: string; // Full name to display
   role: UserRole;
+  email?: string;
+  mobileNumber?: string;
 }
 
 export interface ClientRecord {
@@ -17,18 +20,18 @@ export interface ClientRecord {
   clientName: string;
   mobileNumber: string;
   region: string;
-  systemSizeKw: number;
-  pricePerKw: number; // Excluding tax
+  systemSizeHp: number;
+  pricePerHp: number; // Excluding tax
   lastUpdateNote: string;
   employeeId: string;
   employeeName: string;
   createdAt: string; // ISO String
   updatedAt: string; // ISO String
   adminSeen?: boolean; // Track if admin has viewed the latest update
+  wellsCount?: number;
+  projectMapUrl?: string;
 }
 
 export interface Stats {
   totalClients: number;
-  totalSystemSize: number;
-  totalProjectValue: number;
 }
