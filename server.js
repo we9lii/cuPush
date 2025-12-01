@@ -54,6 +54,32 @@ const asyncHandler = (fn) => (req, res, next) => {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`);
 
+        await db.query(`CREATE TABLE IF NOT EXISTS assignments (
+            id SERIAL PRIMARY KEY,
+            client_id INTEGER REFERENCES clients(id) ON DELETE CASCADE,
+            client_name VARCHAR(100) NOT NULL,
+            employee_id INTEGER REFERENCES users(id),
+            employee_name VARCHAR(100) NOT NULL,
+            assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            snapshot_mobile_number VARCHAR(15),
+            snapshot_region VARCHAR(100),
+            snapshot_system_size_hp DECIMAL(10,2),
+            snapshot_wells_count INTEGER,
+            snapshot_project_map_url TEXT,
+            snapshot_price_per_hp DECIMAL(10,2),
+            snapshot_last_update_note TEXT,
+            snapshot_client_created_at TIMESTAMP
+        )`);
+
+        await db.query(`CREATE TABLE IF NOT EXISTS assignment_updates (
+            id SERIAL PRIMARY KEY,
+            assignment_id INTEGER REFERENCES assignments(id) ON DELETE CASCADE,
+            note TEXT NOT NULL,
+            status TEXT,
+            result TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`);
+
         const hashedPassword = await bcrypt.hash('123', 10);
         await db.query(
             `INSERT INTO users (username, password_hash, full_name, role) 
@@ -297,6 +323,113 @@ app.put('/api/clients/:id', asyncHandler(async (req, res) => {
 app.delete('/api/clients/:id', asyncHandler(async (req, res) => {
     await db.query('DELETE FROM clients WHERE id = $1', [req.params.id]);
     res.json({ message: 'Deleted successfully' });
+}));
+
+// --- Assignments Routes ---
+
+app.get('/api/assignments', asyncHandler(async (req, res) => {
+    const result = await db.query(`
+        SELECT a.* FROM assignments a ORDER BY a.assigned_at DESC
+    `);
+    const rows = result.rows;
+    // Fetch updates for all assignments
+    const ids = rows.map(r => r.id);
+    let updatesByAssignment = new Map();
+    if (ids.length > 0) {
+        const upd = await db.query(
+            `SELECT id, assignment_id, note, status, result, created_at 
+             FROM assignment_updates 
+             WHERE assignment_id = ANY($1::int[]) 
+             ORDER BY created_at DESC`, [ids]
+        );
+        updatesByAssignment = upd.rows.reduce((m, u) => {
+            const arr = m.get(u.assignment_id) || [];
+            arr.push({ id: u.id, note: u.note, status: u.status || null, result: u.result || null, createdAt: u.created_at });
+            m.set(u.assignment_id, arr);
+            return m;
+        }, new Map());
+    }
+    const formatted = rows.map(r => ({
+        id: r.id,
+        clientId: String(r.client_id),
+        clientName: r.client_name,
+        employeeId: String(r.employee_id),
+        employeeName: r.employee_name,
+        assignedAt: r.assigned_at,
+        snapshot: {
+            mobileNumber: r.snapshot_mobile_number,
+            region: r.snapshot_region,
+            systemSizeHp: r.snapshot_system_size_hp !== null ? Number(r.snapshot_system_size_hp) : undefined,
+            wellsCount: r.snapshot_wells_count !== null ? Number(r.snapshot_wells_count) : undefined,
+            projectMapUrl: r.snapshot_project_map_url || undefined,
+            pricePerHp: r.snapshot_price_per_hp !== null ? Number(r.snapshot_price_per_hp) : undefined,
+            lastUpdateNote: r.snapshot_last_update_note || undefined,
+            createdAt: r.snapshot_client_created_at || undefined
+        },
+        updates: updatesByAssignment.get(r.id) || []
+    }));
+    res.json(formatted);
+}));
+
+app.post('/api/assignments', asyncHandler(async (req, res) => {
+    const { clientId, employeeId, clientName, employeeName, snapshot } = req.body || {};
+    if (!clientId || !employeeId || !clientName || !employeeName || !snapshot || !snapshot.mobileNumber) {
+        return res.status(400).json({ message: 'invalid_payload' });
+    }
+    const result = await db.query(
+        `INSERT INTO assignments 
+        (client_id, client_name, employee_id, employee_name, 
+         snapshot_mobile_number, snapshot_region, snapshot_system_size_hp, snapshot_wells_count, 
+         snapshot_project_map_url, snapshot_price_per_hp, snapshot_last_update_note, snapshot_client_created_at)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+        RETURNING id, assigned_at`,
+        [
+            parseInt(clientId, 10),
+            String(clientName),
+            parseInt(employeeId, 10),
+            String(employeeName),
+            String(snapshot.mobileNumber),
+            snapshot.region || null,
+            snapshot.systemSizeHp ?? null,
+            snapshot.wellsCount ?? null,
+            snapshot.projectMapUrl || null,
+            snapshot.pricePerHp ?? null,
+            snapshot.lastUpdateNote || null,
+            snapshot.createdAt ? new Date(snapshot.createdAt) : null
+        ]
+    );
+    const id = result.rows[0].id;
+    const assignedAt = result.rows[0].assigned_at;
+    res.status(201).json({
+        id,
+        clientId: String(clientId),
+        clientName,
+        employeeId: String(employeeId),
+        employeeName,
+        assignedAt,
+        snapshot,
+        updates: []
+    });
+}));
+
+app.post('/api/assignments/:id/updates', asyncHandler(async (req, res) => {
+    const assignmentId = parseInt(req.params.id, 10);
+    const { note, status, result } = req.body || {};
+    if (!note || String(note).trim() === '') return res.status(400).json({ message: 'note_required' });
+    const exists = await db.query('SELECT id FROM assignments WHERE id = $1', [assignmentId]);
+    if (exists.rows.length === 0) return res.status(404).json({ message: 'assignment_not_found' });
+    const ins = await db.query(
+        `INSERT INTO assignment_updates (assignment_id, note, status, result) VALUES ($1,$2,$3,$4) RETURNING id, created_at`,
+        [assignmentId, note, status || null, result || null]
+    );
+    res.status(201).json({ id: ins.rows[0].id, note, status, result, createdAt: ins.rows[0].created_at });
+}));
+
+app.delete('/api/assignments/:id', asyncHandler(async (req, res) => {
+    const assignmentId = parseInt(req.params.id, 10);
+    const del = await db.query('DELETE FROM assignments WHERE id = $1', [assignmentId]);
+    if (del.rowCount === 0) return res.status(404).json({ message: 'assignment_not_found' });
+    res.status(204).end();
 }));
 
 // Health check
