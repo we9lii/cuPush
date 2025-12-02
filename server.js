@@ -350,7 +350,7 @@ app.get('/api/assignments', asyncHandler(async (req, res) => {
         }, new Map());
     }
     const formatted = rows.map(r => ({
-        id: r.id,
+        id: String(r.id),
         clientId: String(r.client_id),
         clientName: r.client_name,
         employeeId: String(r.employee_id),
@@ -401,7 +401,7 @@ app.post('/api/assignments', asyncHandler(async (req, res) => {
     const id = result.rows[0].id;
     const assignedAt = result.rows[0].assigned_at;
     res.status(201).json({
-        id,
+        id: String(id),
         clientId: String(clientId),
         clientName,
         employeeId: String(employeeId),
